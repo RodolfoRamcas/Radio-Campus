@@ -1,0 +1,738 @@
+/* Pantalla pública: siempre oscura, horizontal, con tipografía escalada al ancho para leerse a distancia. */
+
+body[data-surface='screen'] {
+  --bg: #0b0d12;
+  --surface: #141821;
+  --surface-2: #1c2130;
+  --border: #262c3b;
+  --text: #f4f5f8;
+  --text-2: #c9cdd8;
+  --muted: #8e95a6;
+  --accent: #ff5a36;
+  --series-a: #3987e5;
+  --series-b: #d95926;
+  --grid: #262c3b;
+  color-scheme: dark;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.screen {
+  /* Todo se escala con la dimensión que más limite: en 1920×1080 son 22 px; en una TV 4K, el doble;
+     en una laptop o una ventana con barras, la altura manda y nada se encima. */
+  font-size: clamp(12px, min(1.15vw, 2.05vh), 44px);
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1em;
+  padding: 1.2em 1.6em 0;
+  background:
+    radial-gradient(60em 40em at 10% -10%, rgb(255 90 54 / 0.14), transparent 60%),
+    radial-gradient(50em 40em at 110% 110%, rgb(57 135 229 / 0.12), transparent 60%),
+    var(--bg);
+  position: relative;
+}
+
+.screen--loading {
+  place-items: center;
+  grid-template-rows: 1fr;
+}
+
+.screen__boot {
+  font-family: var(--font-display);
+  font-size: 2em;
+  color: var(--muted);
+}
+
+/* --- Barra superior ------------------------------------------------------------------------ */
+
+.screen__top {
+  display: flex;
+  align-items: center;
+  gap: 1.5em;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  flex-shrink: 0;
+}
+
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5em;
+  letter-spacing: -0.01em;
+}
+
+.onair {
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.35em 0.8em;
+  border-radius: 0.4em;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.onair::before {
+  content: '';
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: #fff;
+  animation: blink 1.6s infinite;
+}
+
+.onair--off {
+  background: #4a5063;
+}
+
+.onair--off::before {
+  animation: none;
+}
+
+.context {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.context__clock {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.context__temp {
+  font-size: 1.1em;
+  color: var(--text-2);
+  padding-right: 0.4em;
+}
+
+.chip {
+  font-size: 0.8em;
+  padding: 0.3em 0.75em;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.screen__status {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  flex-shrink: 0;
+  font-size: 0.85em;
+}
+
+.pill {
+  padding: 0.3em 0.8em;
+  border-radius: 999px;
+  font-size: 0.9em;
+  max-width: 26em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill--ok {
+  background: rgb(34 180 94 / 0.16);
+  color: #7fe0a7;
+}
+
+.pill--warn {
+  background: rgb(233 165 0 / 0.16);
+  color: #f3c862;
+}
+
+.pill--bad {
+  background: rgb(229 69 42 / 0.2);
+  color: #ffab9b;
+}
+
+/* --- Zona principal ------------------------------------------------------------------------ */
+
+.screen__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1.2em;
+  min-height: 0;
+}
+
+.stage-card,
+.vote-card {
+  background: rgb(20 24 33 / 0.82);
+  border: 1px solid var(--border);
+  border-radius: 1.1em;
+  padding: 1.4em;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.now {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+  height: 100%;
+  min-height: 0;
+}
+
+.now--empty {
+  justify-content: center;
+}
+
+.now__media {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0.8em;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
+  align-self: flex-start;
+  width: 100%;
+}
+
+.now__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt,
+.yt > div,
+.yt iframe {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border: 0;
+}
+
+.yt__unblock {
+  position: absolute;
+  inset: auto 1em 1em;
+  padding: 0.8em;
+  border: 0;
+  border-radius: 0.6em;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.now__info {
+  display: grid;
+  gap: 0.35em;
+}
+
+.now__title {
+  font-size: 2.8em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.now__artist {
+  font-size: 1.45em;
+  color: var(--text-2);
+}
+
+.now__next {
+  color: var(--muted);
+  margin-top: 0.3em;
+}
+
+.now__next strong {
+  color: var(--text);
+}
+
+.progress {
+  margin-top: 0.4em;
+}
+
+.progress__bar {
+  height: 0.35em;
+  border-radius: 999px;
+  background: var(--grid);
+  overflow: hidden;
+}
+
+.progress__bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s linear;
+}
+
+.progress__times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.3em;
+}
+
+/* --- Anuncio --------------------------------------------------------------------------------- */
+
+.announcement {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.7em;
+  padding: 1em 2em;
+}
+
+.announcement__icon {
+  color: var(--accent);
+  width: 4em;
+  height: 4em;
+}
+
+.announcement__icon svg {
+  width: 100%;
+  height: 100%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.08);
+    opacity: 0.8;
+  }
+}
+
+.announcement__title {
+  font-size: 3em;
+}
+
+.announcement__text {
+  font-size: 1.6em;
+  line-height: 1.4;
+  color: var(--text-2);
+  max-width: 34em;
+}
+
+/* --- Votación -------------------------------------------------------------------------------- */
+
+.vote-card {
+  gap: 1.1em;
+}
+
+.round {
+  /* Nunca se comprime por debajo de su contenido: así el QR no se le encima. */
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+
+.round--idle {
+  justify-content: center;
+}
+
+.round h2 {
+  font-size: 1.75em;
+  margin-top: 0.15em;
+}
+
+.round__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1em;
+}
+
+.timer {
+  position: relative;
+  width: 5.2em;
+  height: 5.2em;
+  flex-shrink: 0;
+}
+
+.timer svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timer circle {
+  fill: none;
+  stroke-width: 7;
+}
+
+.timer__track {
+  stroke: var(--grid);
+}
+
+.timer__fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s linear;
+}
+
+.timer span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3em;
+  font-variant-numeric: tabular-nums;
+}
+
+.options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75em;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.9em;
+  padding: 0.75em;
+  border-radius: 0.8em;
+  background: var(--surface-2);
+  border: 2px solid transparent;
+  position: relative;
+  transition: opacity 0.4s, border-color 0.4s;
+}
+
+.option--winner {
+  border-color: var(--accent);
+}
+
+.option--lost {
+  opacity: 0.55;
+}
+
+.option__letter {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6em;
+  width: 1.6em;
+  text-align: center;
+  color: var(--muted);
+}
+
+.option__art {
+  width: 6.4em;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 0.45em;
+}
+
+.option__text {
+  display: grid;
+  min-width: 0;
+}
+
+.option__text strong {
+  font-size: 1.3em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option__text > span {
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option__badge {
+  position: absolute;
+  top: -0.7em;
+  right: 0.8em;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25em 0.7em;
+  border-radius: 999px;
+}
+
+.round__foot {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.qr {
+  display: flex;
+  align-items: center;
+  gap: 1.1em;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 1em;
+  border-top: 1px solid var(--border);
+}
+
+.qr__code {
+  width: 10em;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 0.6em;
+  padding: 0.35em;
+}
+
+.qr__code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.qr__text {
+  display: grid;
+  gap: 0.25em;
+}
+
+.qr__text strong {
+  font-family: var(--font-display);
+  font-size: 1.45em;
+}
+
+.qr__text span {
+  color: var(--text-2);
+}
+
+.qr__text code {
+  font-size: 1.05em;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* --- Franja inferior ------------------------------------------------------------------------- */
+
+.ticker {
+  margin: 0 -1.6em;
+  border-top: 1px solid var(--border);
+  background: rgb(10 12 17 / 0.92);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0.75em 0;
+  font-size: 1.05em;
+}
+
+.ticker__track {
+  display: inline-flex;
+  animation: ticker linear infinite;
+}
+
+.ticker__group {
+  display: inline-flex;
+  gap: 3em;
+  padding-right: 3em;
+}
+
+.ticker__item b {
+  color: var(--accent);
+  font-weight: 600;
+  margin-right: 0.4em;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* --- Superposiciones ------------------------------------------------------------------------- */
+
+.screen__gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1em;
+  background: rgb(5 6 9 / 0.78);
+  backdrop-filter: blur(6px);
+  text-align: center;
+  padding: 2em;
+  z-index: 5;
+}
+
+.screen__gate p {
+  color: var(--text-2);
+  max-width: 30em;
+}
+
+.gate-button {
+  font-size: 1.5em;
+  font-weight: 700;
+  padding: 0.9em 1.6em;
+  border: 0;
+  border-radius: 0.7em;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.gate-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.claim-here {
+  position: absolute;
+  left: 1.6em;
+  bottom: 3.8em;
+  font-size: 0.8em;
+  padding: 0.5em 0.9em;
+  border-radius: 0.5em;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.claim-here:hover {
+  opacity: 1;
+}
+
+.screen__paused {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(20 24 33 / 0.96);
+  border: 1px solid var(--border);
+  border-radius: 1em;
+  padding: 1.4em 2em;
+  display: grid;
+  gap: 0.4em;
+  text-align: center;
+  z-index: 4;
+  max-width: 34em;
+}
+
+.screen__paused strong {
+  font-family: var(--font-display);
+  font-size: 2em;
+}
+
+.screen__paused span {
+  color: var(--text-2);
+}
+
+/* Pantallas verticales o pequeñas: apilar (no es el uso previsto, pero no debe romperse). */
+@media (max-aspect-ratio: 4/3) {
+  body[data-surface='screen'] {
+    overflow: auto;
+  }
+
+  .screen {
+    font-size: clamp(13px, 2.4vw, 28px);
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .screen__main {
+    grid-template-columns: 1fr;
+  }
+
+  .screen__top {
+    flex-wrap: wrap;
+  }
+}
+
+.gate-form {
+  display: grid;
+  gap: 0.8em;
+  width: min(26em, 90vw);
+  text-align: left;
+}
+
+.gate-form strong {
+  font-family: var(--font-display);
+  font-size: 1.8em;
+}
+
+.gate-form p {
+  color: var(--text-2);
+}
+
+.gate-form input {
+  font-size: 1.2em;
+  padding: 0.7em 0.9em;
+  border-radius: 0.6em;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.gate-form__error {
+  color: #ffab9b;
+}
+
+.gate-skip {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+
+.context__place {
+  color: var(--muted);
+}
+
+/* --- Presentación de la siguiente canción ------------------------------------------------- */
+
+.intro {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.2em;
+}
+
+.intro__art {
+  width: 100%;
+  max-height: 60%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 0.8em;
+  animation: intro-in 0.6s ease-out;
+}
+
+.intro__text {
+  display: grid;
+  gap: 0.35em;
+}
+
+@keyframes intro-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
