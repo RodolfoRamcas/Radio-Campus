@@ -123,12 +123,9 @@ export class RadioEngine {
     )
   }
 
+  /** Veces que sonó cada canción. Lee play_stats (una fila por canción), no el historial completo. */
   playCounts() {
-    return Object.fromEntries(
-      this.db
-        .all("SELECT ref_id, COUNT(*) AS n FROM plays WHERE kind = 'song' AND status != 'error' GROUP BY ref_id")
-        .map((r) => [r.ref_id, r.n]),
-    )
+    return Object.fromEntries(this.db.all("SELECT ref_id, plays FROM play_stats WHERE kind = 'song'").map((r) => [r.ref_id, r.plays]))
   }
 
   // --- Contexto ----------------------------------------------------------------------------
@@ -236,10 +233,16 @@ export class RadioEngine {
   }
 
   insertPlay({ kind, refId, title, source, roundId = null }) {
+    const now = this.clock()
+    this.db.run(
+      `INSERT INTO play_stats (kind, ref_id, plays, last_at) VALUES (?, ?, 1, ?)
+       ON CONFLICT(kind, ref_id) DO UPDATE SET plays = plays + 1, last_at = excluded.last_at`,
+      kind, refId, now,
+    )
     return this.db.get(
       `INSERT INTO plays (kind, ref_id, title, source, round_id, started_at, status)
        VALUES (?, ?, ?, ?, ?, ?, 'reproduciendo') RETURNING id`,
-      kind, refId, title, source, roundId, this.clock(),
+      kind, refId, title, source, roundId, now,
     ).id
   }
 
@@ -325,6 +328,9 @@ export class RadioEngine {
     const current = this.state.now
     if (!current) return
     this.db.run('UPDATE plays SET ended_at = ?, status = ?, detail = ? WHERE id = ?', this.clock(), status, detail, current.playId)
+    // Una reproducción fallida no cuenta como "sonó".
+    const refId = current.kind === 'announcement' ? current.announcementId : current.songId
+    if (status === 'error') this.db.run('UPDATE play_stats SET plays = MAX(plays - 1, 0) WHERE kind = ? AND ref_id = ?', current.kind, refId)
     this.state.now = null
   }
 
@@ -336,8 +342,8 @@ export class RadioEngine {
     if (previous?.kind === 'song') {
       const lastPlays = new Map(
         this.db
-          .all("SELECT ref_id, MAX(started_at) AS t FROM plays WHERE kind = 'announcement' AND status != 'error' GROUP BY ref_id")
-          .map((r) => [r.ref_id, r.t]),
+          .all("SELECT ref_id, last_at FROM play_stats WHERE kind = 'announcement' AND plays > 0")
+          .map((r) => [r.ref_id, r.last_at]),
       )
       const due = pickAnnouncement(this.list('announcements'), this.context(), {
         lastPlays,

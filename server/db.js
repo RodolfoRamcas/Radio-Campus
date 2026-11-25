@@ -131,6 +131,18 @@ const SCHEMA = [
     detail TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS plays_by_time ON plays (started_at)`,
+  // "Lo último que sonó" lee solo canciones, sin recorrer presentaciones ni anuncios.
+  `CREATE INDEX IF NOT EXISTS plays_by_kind_time ON plays (kind, started_at)`,
+  // Resumen por canción/anuncio: cuántas veces sonó y cuándo fue la última. Se mantiene al insertar
+  // cada reproducción, así elegir la siguiente canción no recorre todo el historial de `plays`
+  // (que crece sin límite y en Cloudflare cada fila leída cuenta para la cuota).
+  `CREATE TABLE IF NOT EXISTS play_stats (
+    kind TEXT NOT NULL,
+    ref_id TEXT NOT NULL,
+    plays INTEGER NOT NULL DEFAULT 0,
+    last_at INTEGER,
+    PRIMARY KEY (kind, ref_id)
+  )`,
   `CREATE TABLE IF NOT EXISTS audit (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     at INTEGER NOT NULL,
@@ -139,8 +151,19 @@ const SCHEMA = [
   )`,
 ]
 
+const SCHEMA_VERSION = 2
+
 export function migrate(db) {
   for (const statement of SCHEMA) db.run(statement)
+  if (readKv(db, 'schemaVersion', 0) >= SCHEMA_VERSION) return
+  // Una sola vez: llena play_stats con el historial que ya existía.
+  db.run('DELETE FROM play_stats')
+  db.run(
+    `INSERT INTO play_stats (kind, ref_id, plays, last_at)
+     SELECT kind, ref_id, SUM(CASE WHEN status != 'error' THEN 1 ELSE 0 END), MAX(CASE WHEN status != 'error' THEN started_at END)
+       FROM plays GROUP BY kind, ref_id`,
+  )
+  writeKv(db, 'schemaVersion', SCHEMA_VERSION)
 }
 
 // --- Entidades editables desde el panel -------------------------------------------------

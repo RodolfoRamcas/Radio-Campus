@@ -297,3 +297,26 @@ test('la voz de la presentación se genera una vez y se reutiliza', async () => 
   assert.ok(engine.getSpeech(info.hash))
   void clock
 })
+
+test('el conteo de reproducciones sale de play_stats y coincide con el historial', async () => {
+  const { engine, db, clock } = await started()
+  // Varias canciones completas, una fallida y algunos anuncios entre medio.
+  for (let i = 0; i < 12; i++) {
+    clock.advance(10 * 60_000)
+    engine.step()
+  }
+  engine.playerEvent({ type: 'error', playId: engine.state.now.playId, message: 'Video no disponible' })
+  const fromHistory = Object.fromEntries(
+    db.all("SELECT ref_id, COUNT(*) AS n FROM plays WHERE kind = 'song' AND status != 'error' GROUP BY ref_id").map((r) => [r.ref_id, r.n]),
+  )
+  const counts = Object.fromEntries(Object.entries(engine.playCounts()).filter(([, n]) => n > 0))
+  assert.deepEqual(counts, fromHistory)
+
+  // Una base que ya tenía historial antes de existir play_stats se llena al migrar.
+  db.run('DELETE FROM play_stats')
+  db.run("DELETE FROM kv WHERE key = 'schemaVersion'")
+  const { RadioEngine } = await import('../server/engine.js')
+  const restarted = new RadioEngine({ db, clock, sessionSecret: 's' })
+  restarted.init()
+  assert.deepEqual(Object.fromEntries(Object.entries(restarted.playCounts()).filter(([, n]) => n > 0)), fromHistory)
+})

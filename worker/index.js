@@ -68,10 +68,16 @@ export class Radio extends DurableObject {
     await this.scheduleAlarm()
   }
 
-  /** Cada setAlarm() cuenta como una escritura en SQLite: solo se llama cuando la hora cambia. */
+  /**
+   * Cada setAlarm() cuenta como una escritura en SQLite: solo se llama cuando la hora cambia.
+   *
+   * Sin nadie conectado (ni pantalla, ni votantes, ni panel) la radio no suena para nadie, así que
+   * no se programa alarma: el objeto se duerme y deja de gastar cuota. Cuando alguien vuelve a
+   * entrar, fetch()/connect() llaman a tick(), que pone la programación al día de inmediato.
+   */
   async scheduleAlarm() {
-    this.prefetchSpeech()
-    const at = this.engine.nextWakeAt()
+    const at = this.ctx.getWebSockets().length ? this.engine.nextWakeAt() : null
+    if (at !== null) this.prefetchSpeech()
     if (at === this.alarmAt) return
     this.alarmAt = at
     if (at === null) await this.ctx.storage.deleteAlarm()
@@ -85,6 +91,13 @@ export class Radio extends DurableObject {
   prefetchSpeech() {
     this.speechInFlight ??= new Map()
     const now = Date.now()
+    // Los latidos del reproductor llegan cada 15 s; revisar en cada uno leería la tabla de anuncios
+    // miles de veces al día. Se revisa cuando cambia lo que suena o la cola, o cada 5 minutos.
+    const { now: current, queue } = this.engine.state
+    const key = `${current?.playId}|${queue.map((q) => q.key).join(',')}`
+    if (key === this.prefetchKey && now - this.prefetchAt < 5 * 60_000) return
+    this.prefetchKey = key
+    this.prefetchAt = now
     for (const { text, voice } of this.engine.pendingSpeech()) {
       const key = `${voice}|${text}`
       if (this.speechInFlight.has(key) && now - this.speechInFlight.get(key) < 10 * 60_000) continue
@@ -185,10 +198,16 @@ export class Radio extends DurableObject {
 
   async webSocketClose(ws) {
     if ((ws.deserializeAttachment() ?? {}).player) this.playerGone(ws)
+    else if (!this.othersConnected(ws)) await this.ctx.storage.deleteAlarm().then(() => (this.alarmAt = null))
   }
 
   async webSocketError(ws) {
     if ((ws.deserializeAttachment() ?? {}).player) this.playerGone(ws)
+    else if (!this.othersConnected(ws)) await this.ctx.storage.deleteAlarm().then(() => (this.alarmAt = null))
+  }
+
+  othersConnected(closing) {
+    return this.ctx.getWebSockets().some((s) => s !== closing)
   }
 
   playerGone(closing) {
